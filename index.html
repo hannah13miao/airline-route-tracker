@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✈️ 航线动态追踪</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --tag-new: #064e3b;
+    --tag-new-text: #34d399;
+    --tag-promo: #1e1b4b;
+    --tag-promo-text: #818cf8;
+    --domestic: #1a3a1a;
+    --domestic-text: #4ade80;
+    --foreign: #1a1a3a;
+    --foreign-text: #818cf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* ===== NAV ===== */
+  .top-nav {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    position: sticky; top: 0; z-index: 200;
+  }
+  .nav-inner {
+    max-width: 1400px; margin: 0 auto;
+    display: flex; align-items: center; gap: 0;
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 24px 16px 0;
+    border-right: 1px solid var(--border);
+    margin-right: 8px;
+  }
+  .nav-logo span { font-size: 22px; filter: drop-shadow(0 0 6px rgba(59,130,246,.6)); }
+  .nav-logo h1 { font-size: 16px; font-weight: 700; background: linear-gradient(90deg,#60a5fa,#22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .nav-tabs { display: flex; gap: 2px; }
+  .nav-tab {
+    padding: 18px 20px; font-size: 14px; font-weight: 500; color: var(--text3);
+    cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s;
+    border: none; background: none; white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text2); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-right { margin-left: auto; font-size: 12px; color: var(--text3); }
+  .nav-right span { color: var(--accent2); font-weight: 600; }
+
+  /* ===== PAGES ===== */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ===== STATS BAR ===== */
+  .stats-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 32px; }
+  .stats-inner { max-width: 1400px; margin: 0 auto; display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+  .stat-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); }
+  .stat-num { font-size: 18px; font-weight: 700; color: var(--text); }
+  .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-blue { background: var(--accent); } .dot-green { background: var(--green); }
+  .dot-orange { background: var(--orange); } .dot-cyan { background: var(--accent2); }
+
+  /* ===== FILTERS ===== */
+  .filters-wrap { max-width: 1400px; margin: 20px auto 0; padding: 0 32px; display: flex; flex-direction: column; gap: 10px; }
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .filter-group {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px; transition: border-color .2s;
+  }
+  .filter-group:focus-within { border-color: var(--accent); }
+  .filter-group label { font-size: 12px; color: var(--text3); white-space: nowrap; }
+  .filter-group select, .filter-group input { background: transparent; border: none; outline: none; color: var(--text); font-size: 13px; cursor: pointer; }
+  .filter-group select option { background: #1a2235; }
+  .search-group { flex: 1; min-width: 200px; }
+  .search-group input { width: 100%; }
+
+  /* airline type tabs */
+  .type-tabs { display: flex; gap: 6px; }
+  .type-tab {
+    padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text2); font-size: 13px;
+    cursor: pointer; transition: all .2s;
+  }
+  .type-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .type-tab.active { background: rgba(59,130,246,.15); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .type-tab.tab-domestic.active { background: rgba(74,222,128,.1); border-color: #4ade80; color: #4ade80; }
+  .type-tab.tab-foreign.active { background: rgba(129,140,248,.1); border-color: #818cf8; color: #818cf8; }
+
+  .date-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .date-pill {
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text2); font-size: 12px;
+    cursor: pointer; transition: all .2s;
+  }
+  .date-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .date-pill.active { background: rgba(59,130,246,.15); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  /* ===== MAIN ===== */
+  .main { max-width: 1400px; margin: 20px auto; padding: 0 32px 48px; }
+  .result-info { font-size: 13px; color: var(--text3); margin-bottom: 16px; }
+  .result-info strong { color: var(--text2); }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+
+  /* ===== ROUTE CARD ===== */
+  .route-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden; transition: all .25s; cursor: pointer;
+  }
+  .route-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(59,130,246,.15); }
+  .route-card.expanded { border-color: var(--accent2); }
+
+  .card-header { padding: 16px 18px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .card-airline { display: flex; align-items: center; gap: 10px; }
+  .airline-avatar {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: white; flex-shrink: 0; font-family: monospace;
+  }
+  .airline-info .name { font-size: 14px; font-weight: 600; }
+  .airline-info .date { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .card-badges { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .badge-new { background: var(--tag-new); color: var(--tag-new-text); }
+  .badge-promo { background: var(--tag-promo); color: var(--tag-promo-text); }
+  .badge-source { background: rgba(100,116,139,.2); color: var(--text3); border: 1px solid var(--border); }
+  .badge-domestic { background: var(--domestic); color: var(--domestic-text); }
+  .badge-foreign { background: var(--foreign); color: var(--foreign-text); }
+
+  .card-route { padding: 0 18px 14px; }
+  .route-display { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .city { font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+  .city small { display: block; font-size: 11px; font-weight: 400; color: var(--text3); }
+  .route-arrow { flex: 1; display: flex; align-items: center; gap: 4px; color: var(--accent); }
+  .route-arrow .line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .card-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .meta-item { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 3px; }
+  .meta-item strong { color: var(--text2); }
+  .card-summary { padding: 0 18px 14px; font-size: 13px; color: var(--text2); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-footer { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .source-link { font-size: 12px; color: var(--accent2); text-decoration: none; display: flex; align-items: center; gap: 4px; }
+  .source-link:hover { opacity: .8; }
+  .expand-hint { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+  .expand-arrow { transition: transform .2s; }
+  .expanded .expand-arrow { transform: rotate(180deg); }
+  .card-detail { display: none; padding: 16px 18px; border-top: 1px solid var(--border); background: var(--surface2); }
+  .expanded .card-detail { display: block; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .detail-item label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 3px; }
+  .detail-item span { font-size: 13px; color: var(--text); font-weight: 500; }
+  .detail-summary { font-size: 13px; color: var(--text2); line-height: 1.7; background: rgba(0,0,0,.2); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .detail-source { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); border-radius: 8px; }
+  .detail-source .icon { font-size: 18px; }
+  .detail-source .info { flex: 1; }
+  .detail-source .info .sname { font-size: 12px; font-weight: 600; color: var(--text2); }
+  .detail-source .info .surl { font-size: 11px; color: var(--accent2); text-decoration: none; word-break: break-all; display: block; margin-top: 2px; }
+  .detail-source .info .surl:hover { text-decoration: underline; }
+  .open-btn { padding: 7px 16px; background: var(--accent); color: white; border-radius: 7px; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; border: none; cursor: pointer; }
+  .open-btn:hover { opacity: .85; }
+
+  /* ===== PAGE 2: SCHEDULES ===== */
+  .schedule-page { max-width: 1000px; margin: 0 auto; padding: 24px 32px 48px; }
+  .schedule-hint { font-size: 13px; color: var(--text3); margin-bottom: 20px; line-height: 1.6; }
+
+  /* accordion cards */
+  .airline-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; margin-bottom: 12px; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .airline-card.open { border-color: var(--accent); }
+
+  .airline-card-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 20px; cursor: pointer; user-select: none;
+    transition: background .15s;
+  }
+  .airline-card-header:hover { background: rgba(59,130,246,.05); }
+
+  .airline-logo-big {
+    width: 46px; height: 46px; border-radius: 11px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 900; color: white; font-family: monospace;
+  }
+  .airline-header-info { flex: 1; min-width: 0; }
+  .airline-header-info h2 { font-size: 16px; font-weight: 700; }
+  .airline-header-info .sub { font-size: 12px; color: var(--text3); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .airline-header-stats { display: flex; gap: 16px; flex-shrink: 0; }
+  .astat { text-align: center; }
+  .astat .num { font-size: 18px; font-weight: 800; color: var(--accent); }
+  .astat .lbl { font-size: 10px; color: var(--text3); }
+  .astat.highlight .num { color: var(--tag-new-text); }
+
+  .accordion-arrow {
+    font-size: 16px; color: var(--text3); transition: transform .25s; flex-shrink: 0;
+  }
+  .airline-card.open .accordion-arrow { transform: rotate(180deg); }
+
+  /* body */
+  .airline-card-body {
+    display: none; border-top: 1px solid var(--border);
+  }
+  .airline-card.open .airline-card-body { display: block; }
+
+  /* inner filter */
+  .card-body-filter {
+    padding: 12px 16px; background: var(--surface2);
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-body-filter input {
+    background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; color: var(--text); font-size: 12px; outline: none; flex: 1; min-width: 160px;
+  }
+  .card-body-filter input:focus { border-color: var(--accent); }
+  .cb-tab {
+    padding: 5px 12px; border-radius: 16px; border: 1px solid var(--border);
+    background: none; color: var(--text3); font-size: 12px; cursor: pointer; transition: all .15s;
+  }
+  .cb-tab:hover { color: var(--text2); border-color: var(--text3); }
+  .cb-tab.active { background: rgba(59,130,246,.15); border-color: var(--accent); color: var(--accent); }
+  .cb-tab.active.dom { background: rgba(74,222,128,.1); border-color: #4ade80; color: #4ade80; }
+  .cb-tab.active.intl { background: rgba(129,140,248,.1); border-color: #818cf8; color: #818cf8; }
+
+  /* table */
+  .route-table-wrap { overflow: hidden; }
+  .route-table { width: 100%; border-collapse: collapse; }
+  .route-table th {
+    background: var(--surface2); padding: 9px 16px; text-align: left;
+    font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .route-table td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid rgba(30,45,69,.4); }
+  .route-table tr:last-child td { border-bottom: none; }
+  .route-table tr:hover td { background: rgba(59,130,246,.04); }
+  .route-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .rb-intl { background: var(--foreign); color: var(--foreign-text); }
+  .rb-dom { background: var(--domestic); color: var(--domestic-text); }
+  .rb-new { background: var(--tag-new); color: var(--tag-new-text); }
+  .no-rows { text-align: center; padding: 28px; color: var(--text3); font-size: 13px; }
+
+  /* empty */
+  .empty-state { text-align: center; padding: 60px 32px; color: var(--text3); grid-column: 1/-1; }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 16px; color: var(--text2); margin-bottom: 6px; }
+
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    .top-nav, .stats-bar { padding: 0 16px; }
+    .filters-wrap, .main, .schedule-page { padding: 0 16px; }
+    .filters-wrap { margin-top: 12px; }
+    .main { margin-top: 12px; }
+    .cards-grid { grid-template-columns: 1fr; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .airline-stats { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TOP NAV ===== -->
+<div class="top-nav">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <span>✈️</span>
+      <h1>航线动态追踪</h1>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchPage('news')">📡 新开 · 动态航线</button>
+      <button class="nav-tab" onclick="switchPage('schedule')">📋 国内五大航司现有航线</button>
+    </div>
+    <div class="nav-right">更新于 <span id="last-updated">—</span></div>
+  </div>
+</div>
+
+<!-- ==================== PAGE 1: NEWS ==================== -->
+<div id="page-news" class="page active">
+
+  <div class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat-item"><div class="stat-dot dot-blue"></div><span class="stat-num" id="stat-total">0</span><span>条动态</span></div>
+      <div class="stat-item"><div class="stat-dot dot-green"></div><span class="stat-num" id="stat-new">0</span><span>新开航线</span></div>
+      <div class="stat-item"><div class="stat-dot dot-orange"></div><span class="stat-num" id="stat-promo">0</span><span>主推航线</span></div>
+      <div class="stat-item"><div class="stat-dot" style="background:#4ade80"></div><span class="stat-num" id="stat-domestic-count">0</span><span>国内航司</span></div>
+      <div class="stat-item"><div class="stat-dot" style="background:#818cf8"></div><span class="stat-num" id="stat-foreign-count">0</span><span>外航</span></div>
+    </div>
+  </div>
+
+  <div class="filters-wrap">
+    <div class="filter-row">
+      <div class="filter-group search-group">
+        <label>🔍</label>
+        <input type="text" id="search-input" placeholder="搜索航司、城市、航线…" oninput="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <label>航司</label>
+        <select id="filter-airline" onchange="applyFilters()"><option value="">全部</option></select>
+      </div>
+      <div class="filter-group">
+        <label>类型</label>
+        <select id="filter-type" onchange="applyFilters()">
+          <option value="">全部</option>
+          <option value="new_route">新开航线</option>
+          <option value="promoted_route">主推航线</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="type-tabs">
+        <button class="type-tab active" onclick="selectAirlineType(this,'all')">🌐 全部</button>
+        <button class="type-tab tab-domestic" onclick="selectAirlineType(this,'domestic')">🇨🇳 国内航司</button>
+        <button class="type-tab tab-foreign" onclick="selectAirlineType(this,'foreign')">🌍 外航</button>
+      </div>
+      <div class="date-pills" id="date-pills">
+        <button class="date-pill" onclick="selectDatePill(this,7)">近7天</button>
+        <button class="date-pill active" onclick="selectDatePill(this,14)">近14天</button>
+        <button class="date-pill" onclick="selectDatePill(this,30)">近30天</button>
+        <button class="date-pill" onclick="selectDatePill(this,0)">全部</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="result-info">显示 <strong id="result-count">0</strong> 条结果</div>
+    <div class="cards-grid" id="cards-container"></div>
+  </div>
+</div>
+
+<!-- ==================== PAGE 2: SCHEDULES ==================== -->
+<div id="page-schedule" class="page">
+  <div class="schedule-page" id="schedule-container"></div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const ROUTE_DATA = window.__ROUTE_DATA__ || {"last_updated":"2026-04-14T13:28:00.000Z","routes":[{"id":"1744633200001","date":"2026-04-01","airline":"阿拉斯加航空","airline_en":"Alaska Airlines","route":"西雅图—罗马","origin":"西雅图 SEA","destination":"罗马菲乌米奇诺 FCO","flight_no":null,"frequency":"每日1班","start_date":"2026-04-28","type":"new_route","summary":"阿拉斯加航空将于4月28日开通西雅图至罗马菲乌米奇诺的直飞航线，使用波音787-9执飞，每日一班。这是阿拉斯加航空首次进入欧洲市场，原计划每周四班，因需求强劲升级为每日班次。","source_name":"Aviation Week Network","source_url":"https://aviationweek.com/air-transport/airports-networks/50-new-routes-launching-april-2026","fetched_at":"2026-04-14T12:40:12.091Z","airline_type":"foreign"},{"id":"1744633200002","date":"2026-04-01","airline":"英国航空","airline_en":"British Airways","route":"伦敦希思罗—圣路易斯","origin":"伦敦希思罗 LHR","destination":"圣路易斯 STL","flight_no":null,"frequency":"每周4班","start_date":"2026-04-19","type":"new_route","summary":"英国航空4月19日开通伦敦希思罗至圣路易斯航线，使用波音787-8执飞，恢复时隔逾20年的英美直航。","source_name":"Aviation Week Network","source_url":"https://aviationweek.com/air-transport/airports-networks/50-new-routes-launching-april-2026","fetched_at":"2026-04-14T12:40:12.091Z","airline_type":"foreign"},{"id":"1744633200003","date":"2026-04-01","airline":"爱尔兰航空","airline_en":"Aer Lingus","route":"都柏林—罗利达勒姆","origin":"都柏林 DUB","destination":"罗利达勒姆 RDU","flight_no":null,"frequency":"每周最多5班","start_date":"2026-04-13","type":"new_route","summary":"爱尔兰航空4月13日开通都柏林至罗利达勒姆直飞，使用空客A321XLR执飞，利用长程窄体机开拓美国中小城市市场。","source_name":"Aviation Week Network","source_url":"https://aviationweek.com/air-transport/airports-networks/50-new-routes-launching-april-2026","fetched_at":"2026-04-14T12:40:12.091Z","airline_type":"foreign"},{"id":"1744633200004","date":"2026-04-01","airline":"中国东方航空","airline_en":"China Eastern Airlines","route":"西安—维也纳","origin":"西安 XIY","destination":"维也纳 VIE","flight_no":"MU5063/5064","frequency":"每周3班（周一、四、六）","start_date":"2026-04-20","type":"new_route","summary":"东方航空4月20日开通西安至维也纳航线（MU5063/5064），A330-200执飞，这是东航首条通往奥地利首都的航线。2025年中奥双向旅客约24.34万人次同比增长逾25%。","source_name":"Aviation Week Network","source_url":"https://aviationweek.com/air-transport/airports-networks/50-new-routes-launching-april-2026","fetched_at":"2026-04-14T12:40:12.091Z","airline_type":"domestic"},{"id":"1744633200005","date":"2026-04-01","airline":"中国国际航空","airline_en":"Air China","route":"北京大兴—法兰克福","origin":"北京大兴 PKX","destination":"法兰克福 FRA","flight_no":null,"frequency":"每日1班","start_date":"2026-04-28","type":"new_route","summary":"国航4月28日起从北京大兴新增每日一班至法兰克福，波音777-300ER执飞，是国航扩大大兴机场长途运营规模战略的一部分。","source_name":"Aviation Week Network","source_url":"https://aviationweek.com/air-transport/airports-networks/50-new-routes-launching-april-2026","fetched_at":"2026-04-14T12:40:12.091Z","airline_type":"domestic"},{"id":"1744633200006","date":"2026-04-06","airline":"德国神鹰航空","airline_en":"Condor Airlines","route":"法兰克福—伦敦盖特威克","origin":"法兰克福 FRA","destination":"伦敦盖特威克 LGW","flight_no":null,"frequency":"每日3班","start_date":"2026-04-01","type":"new_route","summary":"德国神鹰航空法兰克福—伦敦盖特威克已于4月1日启航，每日三班，同时宣布5月开通至巴塞罗那、布达佩斯、威尼斯三条新线。","source_name":"Business Travel News","source_url":"https://www.businesstravelnews.com/Transportation/Air/New-Airline-Routes-April-2026-Updates","fetched_at":"2026-04-14T12:40:19.795Z","airline_type":"foreign"},{"id":"1744633200007","date":"2026-04-06","airline":"阿提哈德航空","airline_en":"Etihad Airways","route":"阿布扎比—达卡","origin":"阿布扎比 AUH","destination":"达卡 DAC","flight_no":null,"frequency":"每周4班","start_date":"2026-06-26","type":"new_route","summary":"阿提哈德6月26日开通阿布扎比—达卡季节性航线，每周四班，运营至10月24日，波音777执飞。","source_name":"Business Travel News","source_url":"https://www.businesstravelnews.com/Transportation/Air/New-Airline-Routes-April-2026-Updates","fetched_at":"2026-04-14T12:40:19.795Z","airline_type":"foreign"},{"id":"1744633200008","date":"2026-04-06","airline":"维珍大西洋航空","airline_en":"Virgin Atlantic","route":"伦敦希思罗—首尔","origin":"伦敦希思罗 LHR","destination":"首尔仁川 ICN","flight_no":null,"frequency":null,"start_date":"2026-03-29","type":"new_route","summary":"维珍大西洋3月29日开通伦敦希思罗—首尔仁川航线，借助韩亚与大韩合并后释放的希思罗时刻实现。同时终止伦敦—利雅得航线。","source_name":"Business Travel News","source_url":"https://www.businesstravelnews.com/Transportation/Air/New-Airline-Routes-April-2026-Updates","fetched_at":"2026-04-14T12:40:19.795Z","airline_type":"foreign"},{"id":"1744633200009","date":"2026-04-06","airline":"法国航空","airline_en":"Air France","route":"巴黎戴高乐—伦敦盖特威克","origin":"巴黎戴高乐 CDG","destination":"伦敦盖特威克 LGW","flight_no":null,"frequency":"每日2班","start_date":"2026-03-29","type":"new_route","summary":"法国航空3月29日开通巴黎戴高乐—伦敦盖特威克每日两班，A220执飞，这是法航自1996年以来首次运营进出盖特威克的航班。","source_name":"Business Travel News","source_url":"https://www.businesstravelnews.com/Transportation/Air/New-Airline-Routes-April-2026-Updates","fetched_at":"2026-04-14T12:40:19.795Z","airline_type":"foreign"},{"id":"1744633200010","date":"2026-04-06","airline":"北欧航空","airline_en":"SAS","route":"哥本哈根—伊斯坦布尔","origin":"哥本哈根 CPH","destination":"伊斯坦布尔 IST","flight_no":null,"frequency":"每日1班","start_date":"2026-03-27","type":"new_route","summary":"北欧航空3月27日开通哥本哈根—伊斯坦布尔每日直飞，A320neo执飞，180座配置。","source_name":"Business Travel News","source_url":"https://www.businesstravelnews.com/Transportation/Air/New-Airline-Routes-April-2026-Updates","fetched_at":"2026-04-14T12:40:19.795Z","airline_type":"foreign"},{"id":"1744633200011","date":"2026-04-06","airline":"印度航空","airline_en":"Air India","route":"德里—罗马","origin":"德里 DEL","destination":"罗马 FCO","flight_no":null,"frequency":"每周4班","start_date":"2026-03-26","type":"new_route","summary":"印度航空已开通德里至罗马直飞，每周四班，罗马是其在欧洲大陆的第八个通航点。","source_name":"Business Travel News","source_url":"https://www.businesstravelnews.com/Transportation/Air/New-Airline-Routes-April-2026-Updates","fetched_at":"2026-04-14T12:40:19.795Z","airline_type":"foreign"},{"id":"1744633200012","date":"2026-03-05","airline":"中国东方航空","airline_en":"China Eastern Airlines","route":"上海浦东—塔什干","origin":"上海浦东 PVG","destination":"塔什干 TAS","flight_no":"MU6037/6038","frequency":"每周4班（周一、二、四、六）","start_date":"2026-03-30","type":"new_route","summary":"东航上海浦东—塔什干3月30日启航（MU6037/6038），每周一、二、四、六执飞，是东航2026年国际航网扩张首批航线。","source_name":"中国东方航空集团","source_url":"https://www.ceairgroup.com/ceairgroup/xwzx_158/dhxw_159/202603/t20260305_29651.html","fetched_at":"2026-04-14T12:40:26.232Z","airline_type":"domestic"},{"id":"1744633200013","date":"2026-03-13","airline":"中国南方航空","airline_en":"China Southern Airlines","route":"北京大兴—赫尔辛基","origin":"北京大兴 PKX","destination":"赫尔辛基 HEL","flight_no":null,"frequency":null,"start_date":"2026-03-29","type":"new_route","summary":"南航3月29日开通北京大兴至芬兰赫尔辛基，中芬两国首都间首条直航独飞航线，首航上座率高达98%。","source_name":"国务院国资委","source_url":"http://www.sasac.gov.cn/n2588025/n2588124/c35371390/content.html","fetched_at":"2026-04-14T12:40:26.147Z","airline_type":"domestic"},{"id":"1744633200014","date":"2026-03-13","airline":"中国南方航空","airline_en":"China Southern Airlines","route":"广州—比什凯克","origin":"广州 CAN","destination":"比什凯克 FRU","flight_no":null,"frequency":null,"start_date":"2026-03-29","type":"new_route","summary":"南航3月29日开通广州至吉尔吉斯斯坦首都比什凯克，打通大湾区至中亚新通道。","source_name":"国务院国资委","source_url":"http://www.sasac.gov.cn/n2588025/n2588124/c35371390/content.html","fetched_at":"2026-04-14T12:40:26.147Z","airline_type":"domestic"},{"id":"1744633200015","date":"2026-03-13","airline":"中国南方航空","airline_en":"China Southern Airlines","route":"广州—悉尼","origin":"广州 CAN","destination":"悉尼 SYD","flight_no":null,"frequency":"每日3班","start_date":"2026-03-29","type":"promoted_route","summary":"南航夏秋季将广州—悉尼加密至每日3班，广州—珀斯和广州—阿德莱德由季节性调整为常年执飞。","source_name":"国务院国资委","source_url":"http://www.sasac.gov.cn/n2588025/n2588124/c35371390/content.html","fetched_at":"2026-04-14T12:40:26.147Z","airline_type":"domestic"},{"id":"1744633200016","date":"2026-04-01","airline":"联合航空","airline_en":"United Airlines","route":"纽瓦克—斯普利特","origin":"纽瓦克 EWR","destination":"斯普利特 SPU","flight_no":null,"frequency":"每周3班","start_date":"2026-04-30","type":"new_route","summary":"联合航空4月30日开通纽瓦克至克罗地亚斯普利特，每周三班，767-300ER高比例商务舱配置，瞄准夏季地中海高端旅游需求。","source_name":"Aviation Week Network","source_url":"https://aviationweek.com/air-transport/airports-networks/50-new-routes-launching-april-2026","fetched_at":"2026-04-14T12:40:12.091Z","airline_type":"foreign"},{"id":"1744633200017","date":"2026-04-06","airline":"捷蓝航空","airline_en":"JetBlue","route":"劳德代尔堡—克利夫兰","origin":"劳德代尔堡 FLL","destination":"克利夫兰 CLE","flight_no":null,"frequency":"每日1班","start_date":"2026-07-08","type":"new_route","summary":"捷蓝航空7月8日开通劳德代尔堡至克利夫兰每日直飞，同时增加9条劳德代尔堡出发航线班次。","source_name":"Business Travel News","source_url":"https://www.businesstravelnews.com/Transportation/Air/New-Airline-Routes-April-2026-Updates","fetched_at":"2026-04-14T12:40:19.795Z","airline_type":"foreign"},{"id":"1744633200018","date":"2026-03-05","airline":"中国东方航空","airline_en":"China Eastern Airlines","route":"上海浦东—阿德莱德","origin":"上海浦东 PVG","destination":"阿德莱德 ADL","flight_no":"MU781/782","frequency":"去程周一/四/六 返程周二/五/日","start_date":"2026-06-20","type":"new_route","summary":"东航6月20日—8月2日开通上海浦东—阿德莱德季节性航线（MU781/782），同期加密上海至悉尼、墨尔本、布里斯班班次。","source_name":"中国东方航空集团","source_url":"https://www.ceairgroup.com/ceairgroup/xwzx_158/dhxw_159/202603/t20260305_29651.html","fetched_at":"2026-04-14T12:40:26.232Z","airline_type":"domestic"},{"id":"1744720001001","date":"2026-04-14","airline":"中国国际航空","airline_en":"Air China","route":"北京大兴—米兰","origin":"北京大兴 PKX","destination":"米兰 MXP","flight_no":null,"frequency":null,"start_date":"2026-03-29","type":"new_route","summary":"国航2026夏秋季新增执行北京大兴—米兰国际航线，同步加密北京—华沙、米兰、布达佩斯等10余条欧洲航线，欧洲运力全面扩张。","source_name":"腾讯新闻/北京商报","source_url":"https://news.qq.com/rain/a/20260329A04G2W00","fetched_at":"2026-04-14T13:25:51.558Z","airline_type":"domestic"},{"id":"1744720001002","date":"2026-04-14","airline":"海南航空","airline_en":"Hainan Airlines","route":"哈尔滨—深圳","origin":"哈尔滨 HRB","destination":"深圳 SZX","flight_no":null,"frequency":null,"start_date":"2026-03-29","type":"new_route","summary":"海南航空夏秋季在东北新增哈尔滨—深圳、哈尔滨—广州、哈尔滨—南京—深圳、哈尔滨—郑州—贵阳共4条新航线，串联东北与珠三角、长三角及西南地区。","source_name":"腾讯新闻/北京商报","source_url":"https://news.qq.com/rain/a/20260329A04G2W00","fetched_at":"2026-04-14T13:25:51.558Z","airline_type":"domestic"},{"id":"1744720001003","date":"2026-04-14","airline":"中国东方航空","airline_en":"China Eastern Airlines","route":"北京大兴—塔城","origin":"北京大兴 PKX","destination":"塔城 TCG","flight_no":null,"frequency":null,"start_date":"2026-03-29","type":"new_route","summary":"东航夏秋季新开国内航线41条，新疆云南广西为重点，包括北京大兴—塔城、青岛—库尔勒等；国际快线增至51条，欧洲航线周始发160余班同比增24%。","source_name":"腾讯新闻/北京商报","source_url":"https://news.qq.com/rain/a/20260329A04G2W00","fetched_at":"2026-04-14T13:25:51.558Z","airline_type":"domestic"},{"id":"1744720001004","date":"2026-04-14","airline":"国泰航空","airline_en":"Cathay Pacific","route":"香港—巴塞罗那","origin":"香港 HKG","destination":"巴塞罗那 BCN","flight_no":null,"frequency":"季节性","start_date":"2026-04-01","type":"new_route","summary":"国泰航空夏秋季恢复香港—巴塞罗那及香港—罗马季节性航班，并新增香港往返巴黎、苏黎世各3对，伦敦航班同步扩座。","source_name":"腾讯新闻/北京商报","source_url":"https://news.qq.com/rain/a/20260329A04G2W00","fetched_at":"2026-04-14T13:25:51.558Z","airline_type":"foreign"},{"id":"1744720001005","date":"2026-04-14","airline":"中国国际航空","airline_en":"Air China","route":"北京首都—榆林","origin":"北京首都 PEK","destination":"榆林 UYN","flight_no":null,"frequency":null,"start_date":"2026-03-29","type":"new_route","summary":"国航夏秋季新增北京首都—榆林、北京首都—嘉兴等6条国内航线，80余条航线加密班次，国内量同比增约9%；新增北京—西安商务快线日均10班。","source_name":"北京日报","source_url":"https://xinwen.bjd.com.cn/content/s69c9ae24e4b0cd719e9fb507.html","fetched_at":"2026-04-14T13:25:51.535Z","airline_type":"domestic"}]};
+
+const SCHEDULE_DATA = [
+  {
+    name: "中国东方航空", en: "China Eastern Airlines", code: "MU", color: "135deg,#1d4ed8,#3b82f6",
+    summary: "2026夏秋季投入客机823架（含14架C919），执行航线950余条，日均3200班，同比增1.3%",
+    routes: [
+      {route:"上海浦东—北京首都",type:"dom",freq:"天天班",note:"空中快线"},
+      {route:"上海浦东—广州",type:"dom",freq:"天天班",note:"空中快线"},
+      {route:"上海浦东—成都天府",type:"dom",freq:"天天班",note:"空中快线"},
+      {route:"上海浦东—昆明",type:"dom",freq:"天天班",note:"空中快线"},
+      {route:"上海浦东—西安",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—重庆",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—武汉",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—深圳",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—北京大兴",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—青岛",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—哈尔滨",type:"dom",freq:"天天班",note:"冰雪旺季"},
+      {route:"上海浦东—乌鲁木齐",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—巴黎",type:"intl",freq:"每日1班",note:""},
+      {route:"上海浦东—伦敦希思罗",type:"intl",freq:"每日1班",note:""},
+      {route:"上海浦东—法兰克福",type:"intl",freq:"每日1班",note:""},
+      {route:"上海浦东—阿姆斯特丹",type:"intl",freq:"每日1班",note:""},
+      {route:"上海浦东—悉尼",type:"intl",freq:"每周5班",note:""},
+      {route:"上海浦东—墨尔本",type:"intl",freq:"每周5班",note:""},
+      {route:"上海浦东—新加坡",type:"intl",freq:"天天班",note:""},
+      {route:"上海浦东—东京成田",type:"intl",freq:"天天班",note:""},
+      {route:"上海浦东—首尔仁川",type:"intl",freq:"天天班",note:""},
+      {route:"上海浦东—塔什干",type:"intl",freq:"每周4班",note:"新开 MU6037/6038"},
+      {route:"西安—维也纳",type:"intl",freq:"每周3班",note:"新开 MU5063/5064"},
+      {route:"上海浦东—阿德莱德",type:"intl",freq:"每周3班",note:"新开 季节性"},
+      {route:"北京大兴—塔城",type:"dom",freq:"新开",note:"夏秋新增"},
+      {route:"青岛—库尔勒",type:"dom",freq:"新开",note:"夏秋新增"},
+    ]
+  },
+  {
+    name: "中国南方航空", en: "China Southern Airlines", code: "CZ", color: "135deg,#065f46,#10b981",
+    summary: "2026夏秋季通航点超230个，900余条航线，计划执行航班量近70万班次",
+    routes: [
+      {route:"广州—北京首都",type:"dom",freq:"天天班",note:"空中快线"},
+      {route:"广州—上海浦东",type:"dom",freq:"天天班",note:"空中快线"},
+      {route:"广州—成都",type:"dom",freq:"天天班",note:""},
+      {route:"广州—重庆",type:"dom",freq:"天天班",note:""},
+      {route:"广州—西安",type:"dom",freq:"天天班",note:""},
+      {route:"广州—武汉",type:"dom",freq:"天天班",note:""},
+      {route:"广州—昆明",type:"dom",freq:"天天班",note:""},
+      {route:"广州—哈尔滨",type:"dom",freq:"天天班",note:""},
+      {route:"广州—乌鲁木齐",type:"dom",freq:"天天班",note:""},
+      {route:"广州—悉尼",type:"intl",freq:"每日3班",note:"主推 大幅增班"},
+      {route:"广州—墨尔本",type:"intl",freq:"每日1班",note:""},
+      {route:"广州—珀斯",type:"intl",freq:"每周4班",note:"常年化"},
+      {route:"广州—阿德莱德",type:"intl",freq:"每周3班",note:"常年化"},
+      {route:"广州—新加坡",type:"intl",freq:"天天班",note:""},
+      {route:"广州—曼谷",type:"intl",freq:"天天班",note:""},
+      {route:"广州—吉隆坡",type:"intl",freq:"天天班",note:"增班"},
+      {route:"广州—雅加达",type:"intl",freq:"每周5班",note:""},
+      {route:"广州—迪拜",type:"intl",freq:"每周4班",note:""},
+      {route:"北京大兴—赫尔辛基",type:"intl",freq:"新开",note:"新开 首条芬兰航线"},
+      {route:"广州—比什凯克",type:"intl",freq:"新开",note:"新开 中亚新线"},
+      {route:"广州—德里",type:"intl",freq:"新开",note:"新开"},
+      {route:"北京大兴—伊斯坦布尔",type:"intl",freq:"增班",note:""},
+      {route:"乌鲁木齐—伊斯坦布尔",type:"intl",freq:"增班",note:""},
+    ]
+  },
+  {
+    name: "中国国际航空", en: "Air China", code: "CA", color: "135deg,#7c3aed,#a78bfa",
+    summary: "2026夏秋季新增6条国内航线，80余条加密，国内班次量同比增约9%；欧洲航线重点加密",
+    routes: [
+      {route:"北京首都—上海虹桥",type:"dom",freq:"天天班",note:"空中快线"},
+      {route:"北京首都—广州",type:"dom",freq:"天天班",note:"加密"},
+      {route:"北京首都—成都",type:"dom",freq:"天天班",note:""},
+      {route:"北京首都—西安",type:"dom",freq:"天天班",note:"快线 日均10班"},
+      {route:"北京首都—乌鲁木齐",type:"dom",freq:"天天班",note:"加密"},
+      {route:"北京首都—库尔勒",type:"dom",freq:"天天班",note:"加密"},
+      {route:"北京首都—榆林",type:"dom",freq:"新开",note:"夏秋新增"},
+      {route:"北京首都—嘉兴",type:"dom",freq:"新开",note:"夏秋新增"},
+      {route:"北京首都—伦敦希思罗",type:"intl",freq:"每日1班",note:""},
+      {route:"北京首都—法兰克福",type:"intl",freq:"每日1班",note:""},
+      {route:"北京首都—巴黎",type:"intl",freq:"每日1班",note:""},
+      {route:"北京首都—华沙",type:"intl",freq:"加密",note:""},
+      {route:"北京首都—米兰",type:"intl",freq:"加密",note:""},
+      {route:"北京首都—布达佩斯",type:"intl",freq:"加密",note:""},
+      {route:"北京首都—东京成田",type:"intl",freq:"天天班",note:""},
+      {route:"北京首都—首尔仁川",type:"intl",freq:"天天班",note:""},
+      {route:"北京首都—纽约",type:"intl",freq:"每周3班",note:""},
+      {route:"北京大兴—法兰克福",type:"intl",freq:"每日1班",note:"新开"},
+      {route:"北京大兴—米兰",type:"intl",freq:"新开",note:"新开"},
+    ]
+  },
+  {
+    name: "吉祥航空", en: "Juneyao Airlines", code: "HO", color: "135deg,#b45309,#f59e0b",
+    summary: "2026夏秋季航线总数近150条，通达15个国家和地区，通航航点近100个",
+    routes: [
+      {route:"上海虹桥—北京首都",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—广州",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—成都天府",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—重庆",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—西安",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—武汉",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—昆明",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—贵阳",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—南宁",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—赫尔辛基",type:"intl",freq:"增班",note:"每周+1班"},
+      {route:"上海浦东—雅典",type:"intl",freq:"增班",note:"每周+1班"},
+      {route:"上海浦东—新加坡",type:"intl",freq:"每周5班",note:""},
+      {route:"上海浦东—曼谷",type:"intl",freq:"天天班",note:""},
+      {route:"上海浦东—东京",type:"intl",freq:"每周5班",note:""},
+      {route:"上海浦东—首尔",type:"intl",freq:"天天班",note:""},
+      {route:"上海浦东—悉尼",type:"intl",freq:"每周4班",note:""},
+    ]
+  },
+  {
+    name: "春秋航空", en: "Spring Airlines", code: "9C", color: "135deg,#be185d,#f472b6",
+    summary: "2026夏秋季新增逾90个航班计划，国际线大幅扩张，上海—新加坡升级天天班",
+    routes: [
+      {route:"上海浦东—北京大兴",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—西安",type:"dom",freq:"天天班",note:""},
+      {route:"上海虹桥—乌鲁木齐",type:"dom",freq:"天天班",note:""},
+      {route:"上海浦东—威海",type:"dom",freq:"天天班",note:""},
+      {route:"北京大兴—揭阳",type:"dom",freq:"天天班",note:""},
+      {route:"成都天府—青岛",type:"dom",freq:"每周4班",note:""},
+      {route:"成都天府—乌鲁木齐",type:"dom",freq:"天天班",note:""},
+      {route:"石家庄—绵阳",type:"dom",freq:"天天班",note:""},
+      {route:"石家庄—沈阳",type:"dom",freq:"天天班",note:""},
+      {route:"石家庄—宁波",type:"dom",freq:"每周4班",note:""},
+      {route:"石家庄—大连",type:"dom",freq:"天天班",note:""},
+      {route:"大连—南昌",type:"dom",freq:"天天班",note:""},
+      {route:"长春—南昌",type:"dom",freq:"天天班",note:""},
+      {route:"厦门—长春",type:"dom",freq:"天天班",note:""},
+      {route:"宁波—大连",type:"dom",freq:"每周3班",note:""},
+      {route:"揭阳—武汉",type:"dom",freq:"每周4班",note:""},
+      {route:"揭阳—南京",type:"dom",freq:"每周4班",note:""},
+      {route:"上海浦东—新加坡",type:"intl",freq:"天天班",note:"升级天天班"},
+      {route:"广州—新加坡",type:"intl",freq:"每周3班",note:"新增"},
+      {route:"上海浦东—清州",type:"intl",freq:"每周3班",note:"新增"},
+      {route:"上海浦东—乌兰巴托",type:"intl",freq:"每周1班",note:"季节性"},
+      {route:"上海浦东—济州",type:"intl",freq:"每周1班",note:""},
+      {route:"上海浦东—澳门",type:"intl",freq:"每周3班",note:""},
+      {route:"扬州—曼谷",type:"intl",freq:"每周3班",note:"季节性"},
+      {route:"南昌—曼谷",type:"intl",freq:"每周4班",note:"季节性"},
+    ]
+  }
+];
+
+// ============================================================
+// PAGE 1 LOGIC
+// ============================================================
+let allRoutes = ROUTE_DATA.routes || [];
+let currentDays = 14;
+let currentAirlineType = 'all';
+let expandedId = null;
+
+const DOMESTIC_AIRLINES = ['中国东方航空','中国南方航空','中国国际航空','海南航空','厦门航空','深圳航空','四川航空','山东航空','首都航空','吉祥航空','春秋航空','中国联合航空','西部航空','长龙航空','瑞丽航空','天津航空','华夏航空','河南航空'];
+
+function isDomestic(airline) {
+  if (!airline) return false;
+  return DOMESTIC_AIRLINES.some(d => airline.includes(d.slice(0,3)));
+}
+
+function getAirlineType(r) {
+  if (r.airline_type) return r.airline_type;
+  return isDomestic(r.airline) ? 'domestic' : 'foreign';
+}
+
+function formatDate(str) {
+  if (!str) return '—';
+  try { const d = new Date(str); return d.toLocaleDateString('zh-CN', {month:'long',day:'numeric'}); } catch { return str; }
+}
+function formatDateTime(str) {
+  if (!str) return '—';
+  try { const d = new Date(str); return d.toLocaleString('zh-CN', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return str; }
+}
+function getAbbr(name) {
+  if (!name) return '✈';
+  const map = {'中国国际航空':'CA','南方航空':'CZ','东方航空':'MU','海南航空':'HU','厦门航空':'MF','深圳航空':'ZH','四川航空':'3U','山东航空':'SC','国泰航空':'CX','新加坡航空':'SQ','阿联酋航空':'EK','卡塔尔航空':'QR','达美航空':'DL','美国航空':'AA','联合航空':'UA','英国航空':'BA','法国航空':'AF','汉莎航空':'LH','吉祥航空':'HO','春秋航空':'9C','阿拉斯加航空':'AS','维珍大西洋':'VS','印度航空':'AI','北欧航空':'SK','爱尔兰航空':'EI','神鹰航空':'DE','阿提哈德':'EY','捷蓝':'B6'};
+  for (const [k,v] of Object.entries(map)) { if (name.includes(k.slice(0,3))) return v; }
+  const cn = name.match(/[\u4e00-\u9fff]/g);
+  if (cn && cn.length>=2) return cn[0]+cn[1];
+  return name.slice(0,2).toUpperCase();
+}
+function getColor(name) {
+  const colors = ['135deg,#1d4ed8,#3b82f6','135deg,#065f46,#10b981','135deg,#7c3aed,#a78bfa','135deg,#b45309,#f59e0b','135deg,#be185d,#f472b6','135deg,#0f766e,#06b6d4','135deg,#9f1239,#fb7185','135deg,#1e3a8a,#60a5fa'];
+  let h=0; for (const c of (name||'')) h=(h*31+c.charCodeAt(0))&0xffff;
+  return colors[h%colors.length];
+}
+function isWithinDays(dateStr,days) {
+  if (!days) return true;
+  if (!dateStr) return true;
+  try { const diff=(new Date()-new Date(dateStr))/(864e5); return diff<=days; } catch { return true; }
+}
+
+function buildCard(r) {
+  const abbr=getAbbr(r.airline), color=getColor(r.airline);
+  const isExp=expandedId===r.id;
+  const atype=getAirlineType(r);
+  const typeBadge = r.type==='new_route' ? '<span class="badge badge-new">✦ 新开</span>' : '<span class="badge badge-promo">★ 主推</span>';
+  const atypeBadge = atype==='domestic' ? '<span class="badge badge-domestic">🇨🇳 国内</span>' : '<span class="badge badge-foreign">🌍 外航</span>';
+  const originCity = r.origin||(r.route?r.route.split(/[-—→]/)[0].trim():'—');
+  const destCity = r.destination||(r.route?r.route.split(/[-—→]/).slice(-1)[0].trim():'—');
+  return `<div class="route-card ${isExp?'expanded':''}" id="card-${r.id}" onclick="toggleCard('${r.id}')">
+    <div class="card-header">
+      <div class="card-airline">
+        <div class="airline-avatar" style="background:linear-gradient(${color})">${abbr}</div>
+        <div class="airline-info"><div class="name">${r.airline||'未知'}</div><div class="date">发布 ${formatDate(r.date)}</div></div>
+      </div>
+      <div class="card-badges">${typeBadge}${atypeBadge}<span class="badge badge-source">${r.source_name||'—'}</span></div>
+    </div>
+    <div class="card-route">
+      <div class="route-display">
+        <div class="city">${originCity}<small>${r.origin||''}</small></div>
+        <div class="route-arrow"><div class="line"></div><div>✈</div><div class="line"></div></div>
+        <div class="city">${destCity}<small>${r.destination||''}</small></div>
+      </div>
+      <div class="card-meta">
+        ${r.flight_no?`<div class="meta-item">🔢 <strong>${r.flight_no}</strong></div>`:''}
+        ${r.frequency?`<div class="meta-item">📅 <strong>${r.frequency}</strong></div>`:''}
+        ${r.start_date?`<div class="meta-item">🚀 首航 <strong>${formatDate(r.start_date)}</strong></div>`:''}
+      </div>
+    </div>
+    ${r.summary?`<div class="card-summary">${r.summary}</div>`:''}
+    <div class="card-footer">
+      <a class="source-link" href="${r.source_url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 查看原文</a>
+      <div class="expand-hint">详情 <span class="expand-arrow">▾</span></div>
+    </div>
+    <div class="card-detail" onclick="event.stopPropagation()">
+      <div class="detail-grid">
+        <div class="detail-item"><label>航司</label><span>${r.airline||'—'}${r.airline_en?' / '+r.airline_en:''}</span></div>
+        <div class="detail-item"><label>航班号</label><span>${r.flight_no||'—'}</span></div>
+        <div class="detail-item"><label>航线</label><span>${r.route||originCity+'—'+destCity}</span></div>
+        <div class="detail-item"><label>班期频率</label><span>${r.frequency||'—'}</span></div>
+        <div class="detail-item"><label>首航/生效日期</label><span>${formatDate(r.start_date)||'—'}</span></div>
+        <div class="detail-item"><label>抓取时间</label><span>${formatDateTime(r.fetched_at)||'—'}</span></div>
+      </div>
+      ${r.summary?`<div class="detail-summary">${r.summary}</div>`:''}
+      <div class="detail-source">
+        <div class="icon">📰</div>
+        <div class="info"><div class="sname">${r.source_name||'—'}</div><a class="surl" href="${r.source_url||'#'}" target="_blank" rel="noopener">${r.source_url||'暂无链接'}</a></div>
+        ${r.source_url?`<a class="open-btn" href="${r.source_url}" target="_blank" rel="noopener">打开原文 →</a>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(id) { expandedId=expandedId===id?null:id; applyFilters(); }
+
+function applyFilters() {
+  const search=document.getElementById('search-input').value.toLowerCase();
+  const airline=document.getElementById('filter-airline').value;
+  const type=document.getElementById('filter-type').value;
+  let filtered=allRoutes.filter(r=>{
+    if (!isWithinDays(r.date,currentDays)) return false;
+    if (airline && r.airline!==airline) return false;
+    if (type && r.type!==type) return false;
+    if (currentAirlineType==='domestic' && getAirlineType(r)!=='domestic') return false;
+    if (currentAirlineType==='foreign' && getAirlineType(r)!=='foreign') return false;
+    if (search) { const t=[r.airline,r.route,r.origin,r.destination,r.summary,r.source_name].join(' ').toLowerCase(); if(!t.includes(search)) return false; }
+    return true;
+  });
+  filtered.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+  document.getElementById('result-count').textContent=filtered.length;
+  const c=document.getElementById('cards-container');
+  if (!filtered.length) { c.innerHTML=`<div class="empty-state"><div class="icon">🔍</div><h3>暂无符合条件的航线</h3><p>调整筛选条件或等待下次更新</p></div>`; return; }
+  c.innerHTML=filtered.map(buildCard).join('');
+}
+
+function selectDatePill(el,days) {
+  document.querySelectorAll('.date-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); currentDays=days; applyFilters();
+}
+function selectAirlineType(el,type) {
+  document.querySelectorAll('.type-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); currentAirlineType=type; applyFilters();
+}
+
+function initPage1() {
+  const lu=document.getElementById('last-updated');
+  if (ROUTE_DATA.last_updated) { try { lu.textContent=new Date(ROUTE_DATA.last_updated).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch{} }
+  const domCount=allRoutes.filter(r=>getAirlineType(r)==='domestic').length;
+  const forCount=allRoutes.filter(r=>getAirlineType(r)==='foreign').length;
+  document.getElementById('stat-total').textContent=allRoutes.length;
+  document.getElementById('stat-new').textContent=allRoutes.filter(r=>r.type==='new_route').length;
+  document.getElementById('stat-promo').textContent=allRoutes.filter(r=>r.type==='promoted_route').length;
+  document.getElementById('stat-domestic-count').textContent=domCount;
+  document.getElementById('stat-foreign-count').textContent=forCount;
+  const airlines=[...new Set(allRoutes.map(r=>r.airline).filter(Boolean))].sort();
+  const sel=document.getElementById('filter-airline');
+  airlines.forEach(a=>{ const o=document.createElement('option'); o.value=a; o.textContent=a; sel.appendChild(o); });
+  applyFilters();
+}
+
+// ============================================================
+// PAGE 2 LOGIC — accordion
+// ============================================================
+const scheduleState = {}; // { airlineCode: { open, filter, tab } }
+
+function buildSchedulePage() {
+  const container = document.getElementById('schedule-container');
+  // init state
+  SCHEDULE_DATA.forEach(a => {
+    if (!scheduleState[a.code]) scheduleState[a.code] = { open: false, filter: '', tab: 'all' };
+  });
+
+  let html = `<div class="schedule-hint">点击航司卡片展开航线列表 · 数据来源：2026年夏秋航季（3月29日—10月24日）各航司公告，仅展示代表性航线，完整时刻以官网为准</div>`;
+
+  for (const airline of SCHEDULE_DATA) {
+    const st = scheduleState[airline.code];
+    const intlCount = airline.routes.filter(r=>r.type==='intl').length;
+    const domCount  = airline.routes.filter(r=>r.type==='dom').length;
+    const newCount  = airline.routes.filter(r=>r.freq==='新开'||r.freq==='增班').length;
+
+    html += `<div class="airline-card ${st.open?'open':''}" id="ac-${airline.code}">
+      <div class="airline-card-header" onclick="toggleAirline('${airline.code}')">
+        <div class="airline-logo-big" style="background:linear-gradient(${airline.color})">${airline.code}</div>
+        <div class="airline-header-info">
+          <h2>${airline.name}</h2>
+          <div class="sub">${airline.en} · ${airline.summary}</div>
+        </div>
+        <div class="airline-header-stats">
+          <div class="astat"><div class="num">${airline.routes.length}</div><div class="lbl">展示</div></div>
+          <div class="astat"><div class="num">${intlCount}</div><div class="lbl">国际</div></div>
+          <div class="astat"><div class="num">${domCount}</div><div class="lbl">国内</div></div>
+          <div class="astat highlight"><div class="num">${newCount}</div><div class="lbl">新增</div></div>
+        </div>
+        <div class="accordion-arrow">▾</div>
+      </div>
+      <div class="airline-card-body">
+        <div class="card-body-filter">
+          <input type="text" placeholder="搜索航线…" value="${st.filter}"
+            oninput="updateFilter('${airline.code}', this.value)"
+            onclick="event.stopPropagation()">
+          <button class="cb-tab ${st.tab==='all'?'active':''}" onclick="updateTab('${airline.code}','all',event)">全部</button>
+          <button class="cb-tab dom ${st.tab==='dom'?'active dom':''}" onclick="updateTab('${airline.code}','dom',event)">🏠 国内</button>
+          <button class="cb-tab intl ${st.tab==='intl'?'active intl':''}" onclick="updateTab('${airline.code}','intl',event)">🌍 国际</button>
+          <button class="cb-tab ${st.tab==='new'?'active':''}" onclick="updateTab('${airline.code}','new',event)" style="${st.tab==='new'?'background:rgba(52,211,153,.1);border-color:#34d399;color:#34d399':''}">✦ 新增</button>
+        </div>
+        <div class="route-table-wrap">
+          ${buildRouteTable(airline, st)}
+        </div>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function buildRouteTable(airline, st) {
+  let rows = airline.routes.filter(r => {
+    if (st.tab === 'dom'  && r.type !== 'dom') return false;
+    if (st.tab === 'intl' && r.type !== 'intl') return false;
+    if (st.tab === 'new'  && r.freq !== '新开' && r.freq !== '增班') return false;
+    if (st.filter && !r.route.toLowerCase().includes(st.filter.toLowerCase()) && !r.note.toLowerCase().includes(st.filter.toLowerCase())) return false;
+    return true;
+  });
+
+  if (!rows.length) return '<div class="no-rows">暂无匹配航线</div>';
+
+  const freqCell = freq => {
+    if (freq === '新开')  return '<span class="route-badge rb-new">✦ 新开</span>';
+    if (freq === '增班')  return '<span class="route-badge" style="background:rgba(245,158,11,.15);color:#f59e0b">↑ 增班</span>';
+    if (freq.includes('天天') || freq.includes('每日')) return `<span style="color:var(--accent2);font-weight:600">${freq}</span>`;
+    return `<span style="color:var(--text2)">${freq}</span>`;
+  };
+
+  return `<table class="route-table">
+    <thead><tr><th>航线</th><th>类型</th><th>班期/频率</th><th>备注</th></tr></thead>
+    <tbody>
+      ${rows.map(r=>`<tr>
+        <td style="font-weight:600">${r.route}</td>
+        <td><span class="route-badge ${r.type==='intl'?'rb-intl':'rb-dom'}">${r.type==='intl'?'🌍 国际':'🏠 国内'}</span></td>
+        <td>${freqCell(r.freq)}</td>
+        <td style="color:var(--text3);font-size:12px">${r.note||'—'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function toggleAirline(code) {
+  scheduleState[code].open = !scheduleState[code].open;
+  buildSchedulePage();
+}
+function updateFilter(code, val) {
+  scheduleState[code].filter = val;
+  // only re-render table, not full page
+  const airline = SCHEDULE_DATA.find(a=>a.code===code);
+  const wrap = document.querySelector(`#ac-${code} .route-table-wrap`);
+  if (wrap) wrap.innerHTML = buildRouteTable(airline, scheduleState[code]);
+}
+function updateTab(code, tab, event) {
+  event.stopPropagation();
+  scheduleState[code].tab = tab;
+  // re-render tabs + table
+  const airline = SCHEDULE_DATA.find(a=>a.code===code);
+  const body = document.querySelector(`#ac-${code} .airline-card-body`);
+  if (body) {
+    // update tab classes
+    body.querySelectorAll('.cb-tab').forEach((btn,i)=>{
+      const tabs = ['all','dom','intl','new'];
+      btn.className = 'cb-tab' + (tabs[i]==='dom'?' dom':'') + (tabs[i]==='intl'?' intl':'');
+      if (tabs[i]===tab) {
+        btn.classList.add('active');
+        if (tab==='dom') btn.classList.add('dom');
+        if (tab==='intl') btn.classList.add('intl');
+        if (tab==='new') btn.style.cssText='background:rgba(52,211,153,.1);border-color:#34d399;color:#34d399';
+        else btn.style.cssText='';
+      } else { btn.style.cssText=''; }
+    });
+    const wrap = body.querySelector('.route-table-wrap');
+    if (wrap) wrap.innerHTML = buildRouteTable(airline, scheduleState[code]);
+  }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  event.target.classList.add('active');
+  if (page==='schedule') buildSchedulePage();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+initPage1();
+</script>
+</body>
+</html>
